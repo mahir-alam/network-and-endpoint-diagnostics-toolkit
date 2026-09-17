@@ -1,0 +1,101 @@
+! =============================================================
+! DistSwitch1 - Cisco Catalyst 3560 (multilayer / Layer 3 switch)
+! Role: inter-VLAN routing (SVIs) + trunk aggregation for both
+!       access switches.
+!
+! Paste this into the switch's CLI tab in Packet Tracer while in
+! global configuration mode (enable -> configure terminal), or
+! line-by-line at the "Switch>" prompt starting with "enable".
+! =============================================================
+
+enable
+configure terminal
+
+hostname DistSwitch1
+
+service password-encryption
+enable secret Cisco12345
+no ip domain-lookup
+
+! --- VLAN database ---
+vlan 10
+ name STAFF
+exit
+vlan 20
+ name GUEST
+exit
+vlan 99
+ name MGMT
+exit
+
+! --- Enable Layer 3 routing between VLANs ---
+ip routing
+
+! --- Trunk to AccessSwitch1 ---
+interface FastEthernet0/1
+ description Trunk-to-AccessSwitch1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,99
+ no shutdown
+exit
+
+! --- Trunk to AccessSwitch2 ---
+interface FastEthernet0/2
+ description Trunk-to-AccessSwitch2
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,99
+ no shutdown
+exit
+
+! --- SVIs: one routed gateway interface per VLAN ---
+interface Vlan10
+ description STAFF-Gateway
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan20
+ description GUEST-Gateway
+ ip address 192.168.20.1 255.255.255.0
+ no shutdown
+exit
+
+interface Vlan99
+ description Management
+ ip address 192.168.99.1 255.255.255.0
+ no shutdown
+exit
+
+! --- Segmentation: Guest VLAN cannot reach Staff subnet ---
+ip access-list standard GUEST-RESTRICT
+ deny 192.168.10.0 0.0.0.255
+ permit any
+exit
+
+interface Vlan20
+ ip access-group GUEST-RESTRICT in
+exit
+
+! --- Local admin + remote management ---
+username admin privilege 15 secret AdminPass123
+line con 0
+ logging synchronous
+ exec-timeout 5 0
+exit
+line vty 0 4
+ login local
+ transport input ssh
+ exec-timeout 5 0
+exit
+
+end
+write memory
+
+! --- Verification commands to run and capture as evidence ---
+! show vlan brief
+! show interfaces trunk
+! show ip interface brief
+! show ip route connected
+! show access-lists
