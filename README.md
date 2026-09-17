@@ -1,11 +1,6 @@
 # Network & Device Diagnostics Toolkit
 
-A three-layer diagnostics tool for IT support work.
-
-- **Layer 1** checks whether devices are reachable on the network (Python, real TCP/IP).
-- **Layer 2** checks whether a device is actually healthy (PowerShell, real system/hardware queries).
-- **Layer 3** ties both to a device inventory and a combined report (Excel).
-- A Cisco Packet Tracer topology demonstrates switch/VLAN configuration, separate from the other three layers.
+A three-layer IT diagnostics toolkit. Python checks whether devices are reachable on the network. PowerShell checks whether a device is actually healthy. Excel ties both to a device inventory and a combined report. A Cisco Packet Tracer topology adds switch and VLAN configuration on top.
 
 ## What it looks like
 
@@ -32,28 +27,13 @@ DOWN    PT-PC2-VLAN20          192.168.20.10  -        0.0%     1       -
 Combined report written to: reports/diagnostics_report_20260917_003102.xlsx
 ```
 
-The `PT-*` rows are expected to show DOWN outside Packet Tracer — see [Why the Packet Tracer topology and the live network check use different IP ranges](#why-the-packet-tracer-topology-and-the-live-network-check-use-different-ip-ranges).
+The `PT-*` rows show DOWN because those addresses belong to the Packet Tracer topology, which isn't bridged to this machine's network — see [Architecture](#architecture).
 
-**Excel report:** `docs/screenshots/excel-report.png` — not yet added, see [Screenshots still needed](#screenshots-still-needed).
+Excel report:
 
 ![Excel report screenshot](docs/screenshots/excel-report.png)
 
-## Why this project
-
-Built for the EVR Desktop Support Co-op posting (Sparwood, BC, January 2027 start), against this line in the job description:
-
-> "Collaborate with help desk and network operations teams to determine and resolve end user issues"
-
-It combines two originally separate ideas — network-layer connectivity monitoring plus Cisco switch/VLAN configuration, and device-level diagnostics plus printer/peripheral testing via PowerShell — because that's how real help-desk monitoring tools are built: check whether a device is reachable, and separately whether it's healthy, in one dashboard.
-
-Two other projects sit alongside this one on the same resume: an IT Help Desk Ticketing & Asset Dashboard, and a Fleet Asset Tracking & Predictive Analytics platform (which already covers Power BI). This project covers the network-diagnostics and Cisco-hardware ground those two don't.
-
-## Honesty notes
-
-- This is a simulated, educational network built in Cisco Packet Tracer, not real industrial or enterprise hardware.
-- No named commercial/industrial product (WhatsUp Gold, SCADA, PLCs, RTUs) is used or claimed. All monitoring code here is custom-written.
-- This is solo student work. No claim of an actual help desk or network operations team is made.
-- Every PowerShell cmdlet used here was run against a real Windows machine during development — see [What was verified](#what-was-verified).
+*(screenshot not yet added — see [Screenshots still needed](#screenshots-still-needed))*
 
 ## Tech stack
 
@@ -63,7 +43,7 @@ Two other projects sit alongside this one on the same resume: an IT Help Desk Ti
 | **PowerShell** | Pulls real device info (`Get-ComputerInfo`, `Get-CimInstance`) and runs a real printer test-page job (`Win32_Printer.PrintTestPage`) plus peripheral enumeration (`Get-PnpDevice`). |
 | **TCP/IP** | Real ICMP pings (via the OS `ping` binary) and real TCP socket connects (`socket.create_connection`). See `layer1_network_monitor/network_scanner.py`. |
 | **Cisco Packet Tracer** | A 3-switch, 2-VLAN topology with inter-VLAN routing and a segmentation ACL. See `packet_tracer/`. |
-| **Excel** | Real `.xlsx` read (device inventory) and write (combined status report) via `openpyxl` — not CSVs relabeled, not Power BI. |
+| **Excel** | Real `.xlsx` read (device inventory) and write (combined status report) via `openpyxl`. |
 
 ## Architecture
 
@@ -89,42 +69,36 @@ Layer 1 (Python)      Layer 2 (PowerShell, local host only)
    (Layer 3 export — Network Status + Device Diagnostics sheets)
 ```
 
-### The integration point
+For every device in the inventory, Layer 1 runs a real reachability check. Any device flagged `IsLocalHost=True` (by default, just the machine running the toolkit) also gets the full Layer 2 PowerShell diagnostic run against it. Both results land in the same dashboard row and the same report.
 
-For every device in the inventory, Layer 1 runs a real reachability check. Any device flagged `IsLocalHost=True` (by default, just the machine running the toolkit) also gets the full Layer 2 PowerShell diagnostic run against it. Both results land in the same dashboard row and the same report — reachability and health are joined per device, not two separate tool outputs.
+The sample inventory (`inventory/device_inventory.xlsx`) mixes two kinds of rows: real, reachable targets (`127.0.0.1`, the local network's gateway, public DNS resolvers), and addresses matching the Packet Tracer topology (`192.168.10.x`, `192.168.20.x`, `192.168.99.x` — see `packet_tracer/topology_diagram.md`). The Packet Tracer addresses show DOWN when the toolkit runs outside Packet Tracer, since Packet Tracer's simulated network isn't bridged to the host machine's NIC. They're included so the inventory mirrors the Cisco topology's addressing scheme; the Python tool does not reach into the simulator.
 
-### Why the Packet Tracer topology and the live network check use different IP ranges
+## Features
 
-The sample inventory (`inventory/device_inventory.xlsx`) mixes two kinds of rows:
+**Layer 1 — network monitoring** (`layer1_network_monitor/`)
+- Real ICMP ping checks (shells out to the OS `ping` binary, parses round-trip time)
+- Real TCP socket checks, used as a fallback when a port is specified
+- Uptime/downtime history logged to SQLite, uptime % computed from accumulated checks
+- Console dashboard showing live status, latency, uptime %, and a Layer 2 health summary per device
 
-1. **Real, reachable targets** — `127.0.0.1` (this machine), the local network's default gateway, and two public DNS resolvers (`1.1.1.1`, `8.8.8.8`). These show **UP** when the toolkit runs, since the Python/TCP-IP layer performs live checks, not canned data.
-2. **Addresses matching the Packet Tracer topology** (`192.168.10.x`, `192.168.20.x`, `192.168.99.x` — see `packet_tracer/topology_diagram.md`). These show **DOWN** when the toolkit runs outside Packet Tracer, because Packet Tracer's simulated network isn't bridged to the host machine's real NIC. They're included so the inventory mirrors the Cisco topology's addressing scheme — the Python tool does not reach into the simulator.
+**Layer 2 — device diagnostics** (`layer2_device_diagnostics/`)
+- `Get-DeviceInfo.ps1` — OS, version, architecture, manufacturer, model, CPU, memory, per-disk free space, installed software, last boot time
+- `Test-PrinterPeripheral.ps1` — enumerates installed printers, submits a real test-page spool job via `Win32_Printer.PrintTestPage`, reports live printer status and queue depth, enumerates USB peripherals
+- `Invoke-DeviceDiagnostics.ps1` — orchestrates both scripts and applies threshold-based health rules (disk/memory free-space bands, non-normal printer status) to produce a Healthy/Warning/Critical verdict
 
-## Feature spec vs. what was built
+**Layer 3 — Excel inventory and reporting** (`layer3_excel_io/`, `inventory/`)
+- Imports the device inventory from a `.xlsx` file
+- Exports a combined `.xlsx` report after each run, with a Network Status sheet and a Device Diagnostics sheet, merged per device
 
-### Layer 1 — Network monitoring (`layer1_network_monitor/`)
-- [x] Real ICMP ping checks (`network_scanner.ping_host`, shells out to the OS `ping` binary and parses real round-trip time)
-- [x] Real TCP socket checks (`network_scanner.tcp_check`, stdlib `socket`)
-- [x] Uptime/downtime history logged to SQLite (`uptime_tracker.py`), uptime % computed from accumulated check history
-- [x] Console dashboard (`dashboard.py`) showing live status, latency, uptime %, and a Layer 2 health summary per device
+**Integration**
+- Local-host devices get both layers joined in the dashboard and report
 
-### Layer 2 — Device-level diagnostics (`layer2_device_diagnostics/`)
-- [x] `Get-DeviceInfo.ps1` — OS, version, architecture, manufacturer, model, CPU, total/free memory, per-disk free space, installed software list, last boot time
-- [x] `Test-PrinterPeripheral.ps1` — enumerates installed printers, submits a real test-page spool job via `Win32_Printer.PrintTestPage`, reports live printer status and queue depth, enumerates USB peripherals via `Get-PnpDevice`
-- [x] `Invoke-DeviceDiagnostics.ps1` — orchestrates both scripts and applies threshold-based health rules (disk/memory free-space bands, non-normal printer status) to produce a Healthy/Warning/Critical verdict
-
-### Layer 3 — Excel inventory & reporting (`layer3_excel_io/`, `inventory/`)
-- [x] Imports device inventory from a real `.xlsx` (`inventory_reader.py`, via `openpyxl`)
-- [x] Exports a combined `.xlsx` report after each run (`report_writer.py`), with a Network Status sheet and a Device Diagnostics sheet, merged per device
-
-### Integration
-- [x] Local-host devices get both layers joined in the dashboard and report
-
-### Cisco Packet Tracer (`packet_tracer/`)
-- [x] Topology design and addressing scheme (`topology_diagram.md`): 3 switches, 2 VLANs plus a management VLAN, inter-VLAN routing, a segmentation ACL
-- [x] Cisco IOS configuration commands for all three switches (`configs/*.txt`)
-- [x] Saved Packet Tracer project (`network-topology.pkz`)
-- [x] `show running-config` output captured from all three switches (`configs/*_running-config.txt`)
+**Cisco Packet Tracer** (`packet_tracer/`)
+- Topology design and addressing scheme: 3 switches, 2 VLANs plus a management VLAN, inter-VLAN routing, a segmentation ACL
+- Cisco IOS configuration commands for all three switches
+- Saved Packet Tracer project (`network-topology.pkz`)
+- `show running-config` output captured from all three switches
+- VLAN reachability tested with ping between hosts in the topology
 
 ## What was verified
 
@@ -158,12 +132,6 @@ Output:
 - `logs/uptime_history.db` — SQLite history (gitignored, machine-specific)
 - `reports/diagnostics_report_<timestamp>.xlsx` — combined report (gitignored, machine-specific)
 
-## Verifiability
-
-- **GitHub repo:** this one.
-- **Live deployed link:** not applicable — this monitors local/simulated network devices and desktop Packet Tracer files, not a hosted service.
-- **Evidence:** the Python/PowerShell/Excel pipeline runs end-to-end, as described above. `packet_tracer/` holds the topology file, the IOS config scripts, and each switch's own `show running-config` output.
-
 ## Repo structure
 
 ```
@@ -175,14 +143,15 @@ integration/                  Main entry point tying all three layers together
 packet_tracer/                Topology, Cisco IOS configs, running-config exports
 ```
 
+## Scope and limitations
+
+- This is a simulated network built in Cisco Packet Tracer, not real hardware.
+- Layer 2 diagnostics run against the local machine by default. PowerShell Remoting (`Invoke-Command -ComputerName`) would extend this to other machines, but that requires WinRM trust configuration between machines that wasn't tested here.
+
 ## Screenshots still needed
 
-- **`docs/screenshots/excel-report.png`** — referenced in [What it looks like](#what-it-looks-like) above, not yet in the repo. To add it:
+- **`docs/screenshots/excel-report.png`** — referenced in [What it looks like](#what-it-looks-like), not yet in the repo. To add it:
   1. Run `python -m integration.run_diagnostics`.
   2. Open the generated `reports/diagnostics_report_<timestamp>.xlsx` in Excel.
-  3. Screenshot the "Network Status (Layer 1)" sheet (include the "Device Diagnostics (Layer 2)" sheet too if it fits, e.g. by screenshotting both tabs or stacking two images).
-  4. Save it as `docs/screenshots/excel-report.png` in the repo root (create the `docs/screenshots/` folders if they don't exist). The image reference already in the README will pick it up automatically once it exists.
-
-## Known simplifications
-
-- **Layer 2 diagnostics only run against the local machine by default.** PowerShell Remoting (`Invoke-Command -ComputerName`) would extend this to other machines, but that requires WinRM trust configuration between machines that wasn't available to test here. The `IsLocalHost` flag in the inventory is the boundary of what's demonstrated.
+  3. Screenshot the "Network Status (Layer 1)" sheet (include "Device Diagnostics (Layer 2)" too if it fits).
+  4. Save it as `docs/screenshots/excel-report.png` in the repo root. The image reference already in the README will pick it up once the file exists.
