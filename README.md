@@ -29,11 +29,9 @@ Combined report written to: reports/diagnostics_report_20260917_003102.xlsx
 
 The `PT-*` rows show DOWN because those addresses belong to the Packet Tracer topology, which isn't bridged to this machine's network — see [Architecture](#architecture).
 
-Excel report:
+Excel report, "Network Status" sheet, from the same run:
 
 ![Excel report screenshot](docs/screenshots/excel-report.png)
-
-*(screenshot not yet added — see [Screenshots still needed](#screenshots-still-needed))*
 
 ## Tech stack
 
@@ -148,10 +146,3 @@ packet_tracer/                Topology, Cisco IOS configs, running-config export
 - This is a simulated network built in Cisco Packet Tracer, not real hardware.
 - Layer 2 diagnostics run against the local machine by default. PowerShell Remoting (`Invoke-Command -ComputerName`) would extend this to other machines, but that requires WinRM trust configuration between machines that wasn't tested here.
 
-## Screenshots still needed
-
-- **`docs/screenshots/excel-report.png`** — referenced in [What it looks like](#what-it-looks-like), not yet in the repo. To add it:
-  1. Run `python -m integration.run_diagnostics`.
-  2. Open the generated `reports/diagnostics_report_<timestamp>.xlsx` in Excel.
-  3. Screenshot the "Network Status (Layer 1)" sheet (include "Device Diagnostics (Layer 2)" too if it fits).
-  4. Save it as `docs/screenshots/excel-report.png` in the repo root. The image reference already in the README will pick it up once the file exists.
