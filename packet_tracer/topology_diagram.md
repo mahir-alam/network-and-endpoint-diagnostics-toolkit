@@ -73,8 +73,11 @@ resolve as reachable when the toolkit runs outside Packet Tracer.
 
 ## Security/segmentation feature demonstrated
 
-`DistSwitch1` applies a standard ACL (`GUEST-RESTRICT`) inbound on the
-VLAN 20 SVI that denies traffic destined for the 192.168.10.0/24 (Staff)
-subnet while permitting everything else — a real, minimal demonstration
-of VLANs being used for actual traffic segmentation, not just broadcast
-domain separation on paper.
+`DistSwitch1` applies an extended ACL (`GUEST-RESTRICT`) inbound on the
+VLAN 20 SVI that denies traffic sourced from 192.168.20.0/24 (Guest)
+destined for 192.168.10.0/24 (Staff), while permitting everything else —
+a real, minimal demonstration of VLANs being used for actual traffic
+segmentation, not just broadcast domain separation on paper. It has to
+be an extended ACL: a standard ACL can only match source address, so it
+can't express "block this source only when it's headed to that
+destination."

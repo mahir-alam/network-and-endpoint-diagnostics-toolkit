@@ -69,9 +69,14 @@ interface Vlan99
 exit
 
 ! --- Segmentation: Guest VLAN cannot reach Staff subnet ---
-ip access-list standard GUEST-RESTRICT
- deny 192.168.10.0 0.0.0.255
- permit any
+! Must be an extended ACL: a standard ACL only matches source address,
+! so it cannot express "block this source only when going to that
+! destination". This matches source 192.168.20.0/24 (Guest) AND
+! destination 192.168.10.0/24 (Staff), applied inbound on the Guest
+! SVI where guest-sourced traffic actually enters routing.
+ip access-list extended GUEST-RESTRICT
+ deny ip 192.168.20.0 0.0.0.255 192.168.10.0 0.0.0.255
+ permit ip any any
 exit
 
 interface Vlan20
