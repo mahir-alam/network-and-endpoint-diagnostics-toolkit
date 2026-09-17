@@ -7,6 +7,37 @@ A three-layer diagnostics tool for IT support work.
 - **Layer 3** ties both to a device inventory and a combined report (Excel).
 - A Cisco Packet Tracer topology demonstrates switch/VLAN configuration, separate from the other three layers.
 
+## What it looks like
+
+Console dashboard from a real run of `python -m integration.run_diagnostics`:
+
+```
+Loaded 7 devices from inventory.
+
+Running Layer 1 network reachability checks...
+  [Layer 2] Running device diagnostics for 'This-PC' (local host)...
+
+STATUS  HOSTNAME               IP ADDRESS     LATENCY  UPTIME%  CHECKS  LAYER 2 SUMMARY
+------  ---------------------  -------------  -------  -------  ------  ----------------------
+UP      This-PC                127.0.0.1      1.0 ms   100.0%   1       Warning (1 warning(s))
+UP      Default-Gateway        192.168.1.254  3.0 ms   100.0%   1       -
+UP      Public-DNS-Cloudflare  1.1.1.1        6.0 ms   100.0%   1       -
+UP      Public-DNS-Google      8.8.8.8        24.0 ms  100.0%   1       -
+DOWN    PT-DistSwitch1-Mgmt    192.168.99.1   -        0.0%     1       -
+DOWN    PT-PC1-VLAN10          192.168.10.10  -        0.0%     1       -
+DOWN    PT-PC2-VLAN20          192.168.20.10  -        0.0%     1       -
+
+4/7 devices UP
+
+Combined report written to: reports/diagnostics_report_20260917_003102.xlsx
+```
+
+The `PT-*` rows are expected to show DOWN outside Packet Tracer — see [Why the Packet Tracer topology and the live network check use different IP ranges](#why-the-packet-tracer-topology-and-the-live-network-check-use-different-ip-ranges).
+
+**Excel report:** `docs/screenshots/excel-report.png` — not yet added, see [Screenshots still needed](#screenshots-still-needed).
+
+![Excel report screenshot](docs/screenshots/excel-report.png)
+
 ## Why this project
 
 Built for the EVR Desktop Support Co-op posting (Sparwood, BC, January 2027 start), against this line in the job description:
@@ -94,7 +125,6 @@ The sample inventory (`inventory/device_inventory.xlsx`) mixes two kinds of rows
 - [x] Cisco IOS configuration commands for all three switches (`configs/*.txt`)
 - [x] Saved Packet Tracer project (`network-topology.pkz`)
 - [x] `show running-config` output captured from all three switches (`configs/*_running-config.txt`)
-- [x] Screenshot of ping tests run from PC3 against VLAN 10 and VLAN 20 hosts (`segmentation-test-evidence.png`)
 
 ## What was verified
 
@@ -132,7 +162,7 @@ Output:
 
 - **GitHub repo:** this one.
 - **Live deployed link:** not applicable — this monitors local/simulated network devices and desktop Packet Tracer files, not a hosted service.
-- **Evidence:** the Python/PowerShell/Excel pipeline runs end-to-end, as described above. `packet_tracer/` holds the topology file, the IOS config scripts, each switch's own `show running-config` output, and a screenshot from testing the topology in Packet Tracer.
+- **Evidence:** the Python/PowerShell/Excel pipeline runs end-to-end, as described above. `packet_tracer/` holds the topology file, the IOS config scripts, and each switch's own `show running-config` output.
 
 ## Repo structure
 
@@ -142,8 +172,16 @@ layer1_network_monitor/       Python — ping/TCP checks, uptime log, dashboard
 layer2_device_diagnostics/    PowerShell — device info, printer/peripheral tests
 layer3_excel_io/              Python — .xlsx import/export
 integration/                  Main entry point tying all three layers together
-packet_tracer/                Topology, Cisco IOS configs, running-config exports, screenshot
+packet_tracer/                Topology, Cisco IOS configs, running-config exports
 ```
+
+## Screenshots still needed
+
+- **`docs/screenshots/excel-report.png`** — referenced in [What it looks like](#what-it-looks-like) above, not yet in the repo. To add it:
+  1. Run `python -m integration.run_diagnostics`.
+  2. Open the generated `reports/diagnostics_report_<timestamp>.xlsx` in Excel.
+  3. Screenshot the "Network Status (Layer 1)" sheet (include the "Device Diagnostics (Layer 2)" sheet too if it fits, e.g. by screenshotting both tabs or stacking two images).
+  4. Save it as `docs/screenshots/excel-report.png` in the repo root (create the `docs/screenshots/` folders if they don't exist). The image reference already in the README will pick it up automatically once it exists.
 
 ## Known simplifications
 
