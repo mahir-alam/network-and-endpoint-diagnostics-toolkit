@@ -33,6 +33,10 @@ Excel report, "Network Status" sheet, from the same run:
 
 ![Excel report screenshot](docs/screenshots/excel-report.png)
 
+Ping tests run from PC2 (VLAN 20, Guest) inside the Packet Tracer topology, against a VLAN 10 (Staff) host and a VLAN 20 (Guest) host on the other access switch:
+
+![Packet Tracer ping test screenshot](packet_tracer/segmentation-test-evidence.png)
+
 ## Tech stack
 
 | Tool | What it does here |
